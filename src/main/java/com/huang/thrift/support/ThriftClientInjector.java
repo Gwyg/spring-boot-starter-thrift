@@ -1,61 +1,75 @@
 package com.huang.thrift.support;
 
+
 import com.huang.thrift.annotation.ThriftClient;
+import com.huang.thrift.config.NacosConfigProperties;
+import com.huang.thrift.config.ThriftClientConfig;
 import com.huang.thrift.factory.ThriftClientProxyFactory;
 import com.huang.thrift.factory.ThriftConnectionFactory;
+import com.huang.thrift.utils.LoadBalancer;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-
-import java.lang.reflect.Constructor;
+import org.springframework.core.annotation.AnnotationUtils;
 import java.lang.reflect.Field;
-import java.lang.reflect.Proxy;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 负责创建并注入 Thrift 客户端实例。
  */
 public class ThriftClientInjector implements BeanPostProcessor {
 
-    private GenericObjectPool<TSocket> connectionPool;
+    @Autowired(required = false)
+    private NacosConfigProperties nacosConfig;
+    @Autowired(required = false)
+    private LoadBalancer loadBalancer;
 
-    private void initConnectionPool(String host, int port, int timeout){
+    @Autowired
+    private ThriftClientConfig thriftClientConfig;
+
+    // 修改后：按服务器标识（host:port）缓存连接池
+    private Map<String, GenericObjectPool<TTransport>> connectionPoolMap = new ConcurrentHashMap<>();
+
+    private GenericObjectPool<TTransport> initConnectionPool(String host, int port, int timeout){
+        // TODO 客户端 Nacos 的实现
         // 配置连接池参数
-        GenericObjectPoolConfig<TSocket> config = new GenericObjectPoolConfig<>();
-        config.setMaxTotal(10);
-        config.setMaxIdle(5);
+        GenericObjectPoolConfig<TTransport> config = new GenericObjectPoolConfig<>();
+        config.setMaxTotal(5);
+        config.setMaxIdle(3);
         config.setMinIdle(1);
+        config.setTestOnBorrow(true); // 借用连接是验证
+        config.setTestWhileIdle(true); // 空闲时定期验证
+        config.setTimeBetweenEvictionRuns(Duration.ofSeconds(30000));
+        config.setMinEvictableIdleTime(Duration.ofSeconds(60000));
         config.setTestOnBorrow(true); // 借用连接是验证有效性
         // 创建工厂
         ThriftConnectionFactory factory = new ThriftConnectionFactory(host, port, timeout);
         // 初始化连接池
-        connectionPool = new GenericObjectPool<>(factory, config);
+        return new GenericObjectPool<>(factory, config);
     }
 
-    @Override
+    /*@Override
     public Object postProcessAfterInitialization(Object bean, String beanName) {
         // 获取当前 bean 的所有字段信息
         Field[] fields = bean.getClass().getDeclaredFields();
         // 遍历当前 bean 的所有字段，如果有 @ThriftClient 注解，则创建并注入 Thrift 客户端实例
         for (Field field : fields) {
             // 检查是否有 @ThriftClient 注解
-            if(field.isAnnotationPresent(ThriftClient.class)){
-                // 获取注解信息
-                ThriftClient annotation = field.getAnnotation(ThriftClient.class);
+            ThriftClient annotation = AnnotationUtils.findAnnotation(field, ThriftClient.class);
+            if(annotation != null){
                 try {
-                    String host = annotation.host();
-                    int port = annotation.port();
-                    int timeout = annotation.timeout();
-                    // 初始化连接池
-                    if(connectionPool == null) initConnectionPool(host, port, timeout);
-                    String serviceName = annotation.serviceName();
-                    if(serviceName == null || serviceName.isEmpty()) {
-                        serviceName = field.getType().getSimpleName().replace("$Iface", "");
-                    }
+                    // 获取配的地址
+                    String host = annotation.host().isEmpty() ? thriftClientConfig.getServer_host() : annotation.host();
+                    int port = annotation.port() == -1 ? thriftClientConfig.getServer_port() : annotation.port();
+                    // 获取化连接池
+                    GenericObjectPool<TTransport> pool = initOrGetPool(host, port);
+                    String serviceName = annotation.serviceName().isEmpty() ? field.getName() : annotation.serviceName();
                     // 利用工厂创建代理对象
-                    Object client = ThriftClientProxyFactory.createProxy(connectionPool, field.getType(), annotation.serviceName());
+                    Object client = ThriftClientProxyFactory.createProxy(pool, field.getType(), serviceName);
                     field.setAccessible(true);
                     field.set(bean, client);
                 }catch (Exception e){
@@ -65,6 +79,44 @@ public class ThriftClientInjector implements BeanPostProcessor {
             }
         }
         return bean;
+    }*/
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) {
+        Field[] fields = bean.getClass().getDeclaredFields();
+        for (Field field : fields) {
+            ThriftClient annotation = AnnotationUtils.findAnnotation(field, ThriftClient.class);
+            if (annotation != null) {
+                try {
+                    String serviceName = annotation.serviceName().isEmpty() ? field.getName() : annotation.serviceName();
+                    Object client;
+                    if (nacosConfig != null && nacosConfig.isEnabled()) {
+                        // 使用 Nacos 获取服务实例
+                        String nacosName = annotation.nacosName();
+                        if(!loadBalancer.hasInstances(nacosName)){
+                            loadBalancer.updateInstances(nacosName, nacosConfig.getNamingService().getAllInstances(nacosName));
+                        }
+                        client = ThriftClientProxyFactory.createProxy(loadBalancer, field.getType(), serviceName);
+                    } else {
+                        // 使用默认的 host 和 port
+                        String host = annotation.host().isEmpty() ? thriftClientConfig.getServer_host() : annotation.host();
+                        int port = annotation.port() == -1 ? thriftClientConfig.getServer_port() : annotation.port();
+                        GenericObjectPool<TTransport> pool = initOrGetPool(host, port);
+                        client = ThriftClientProxyFactory.createProxy(pool, field.getType(), serviceName);
+                    }
+                    field.setAccessible(true);
+                    field.set(bean, client);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to create Thrift client", e);
+                }
+            }
+        }
+        return bean;
+    }
+
+    private GenericObjectPool<TTransport> initOrGetPool(String host, int port){
+        String key = "http://" + host + ":" + port;
+        // 初始化新连接池
+        return connectionPoolMap.computeIfAbsent(key, k -> initConnectionPool(host, port, thriftClientConfig.getTimeout()));
     }
 
 }

@@ -1,6 +1,6 @@
 package com.huang.thrift.annotation;
-
 import org.springframework.core.annotation.AliasFor;
+
 import java.lang.annotation.*;
 
 
@@ -15,13 +15,18 @@ public @interface ThriftClient {
     /**
      * Thrift 服务端的主机地址，默认为 localhost。
      */
-    String serviceName(); // 服务名称
-    int timeout() default 3000;   // 超时时间（毫秒）
-    String host() default "localhost";
+    @AliasFor("serviceName")
+    String value() default "";
+    @AliasFor("value")
+    String serviceName() default ""; // 服务名称
+    // 服务地址
+    String host() default "";
     /**
      * Thrift 服务端的端口号，默认为 9000。
      */
-    int port() default 9000;
+    int port() default -1;
+    // 注册在 nacos 的服务名
+    String nacosName() default "thrift-service";
 
 
 }

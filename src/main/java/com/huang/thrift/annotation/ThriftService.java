@@ -16,13 +16,11 @@ import java.lang.annotation.*;
 @Documented
 @Component
 public @interface ThriftService {
-    /**
-     * Thrift 服务端监听的端口号，默认为 9000。
+    /*
+     * 服务名称
      */
-    int port() default 9000;
-
     @AliasFor("value")
-    String name();
+    String name() default "";
     @AliasFor("name")
-    String value();
+    String value() default "";
 }

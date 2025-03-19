@@ -6,6 +6,7 @@ import org.apache.thrift.TProcessor;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -15,7 +16,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-
+@ConditionalOnProperty(name = "huang.thrift.server.enabled", havingValue = "true")
 public class ThriftServiceProcessor implements BeanPostProcessor {
 
     private ApplicationContext applicationContext;
@@ -42,7 +43,9 @@ public class ThriftServiceProcessor implements BeanPostProcessor {
                 // 确定服务名称（优先注解值，其次接口简名）
                 String serviceName = annotation.name();
                 if(StringUtils.isEmpty(serviceName)){
-                    serviceName = ifaceClass.getSimpleName().replace("$Iface", "");
+                    // 获取接口的父类名（去掉 $Iface），首字符小写
+                    serviceName = ifaceClass.getEnclosingClass().getSimpleName();
+                    serviceName = Character.toLowerCase(serviceName.charAt(0)) + serviceName.substring(1);
                 }
                 // 防止重复注册
                 if(serviceInterfaceMap.containsKey(serviceName)){
@@ -50,7 +53,7 @@ public class ThriftServiceProcessor implements BeanPostProcessor {
                 }
                 serviceInterfaceMap.put(serviceName, ifaceClass);
                 // 注册多路服用器
-                this.processor.registerProcessor(serviceName, processor);
+                ThriftServiceProcessor.processor.registerProcessor(serviceName, processor);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

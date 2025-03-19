@@ -1,0 +1,2 @@
+com.huang.thrift.test.User
+com.huang.thrift.autoconfigure.ThriftAutoConfiguration
