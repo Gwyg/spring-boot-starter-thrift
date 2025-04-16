@@ -8,7 +8,6 @@ import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.StringUtils;
 
@@ -16,7 +15,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@ConditionalOnProperty(name = "huang.thrift.server.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "spring.thrift.service.enabled", havingValue = "true")
 public class ThriftServiceProcessor implements BeanPostProcessor {
 
     private ApplicationContext applicationContext;

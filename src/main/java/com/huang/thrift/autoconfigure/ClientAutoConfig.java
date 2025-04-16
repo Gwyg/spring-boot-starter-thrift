@@ -1,6 +1,8 @@
 package com.huang.thrift.autoconfigure;
 
 
+import com.alibaba.nacos.api.naming.NamingService;
+import com.huang.thrift.config.NacosConfigProperties;
 import com.huang.thrift.config.ThriftClientConfig;
 import com.huang.thrift.utils.LoadBalancer;
 import com.huang.thrift.utils.RandomLoadBalancer;
@@ -16,7 +18,7 @@ public class ClientAutoConfig {
     }
     @Bean
     @ConditionalOnProperty(name = "spring.thrift.nacos.enabled", havingValue = "true")
-    public LoadBalancer loadBalancer() {
-        return new RandomLoadBalancer();
+    public LoadBalancer loadBalancer(NacosConfigProperties nacosConfigProperties) {
+        return new RandomLoadBalancer(nacosConfigProperties);
     }
 }

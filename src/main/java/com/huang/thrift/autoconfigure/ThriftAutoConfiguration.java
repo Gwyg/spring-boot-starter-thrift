@@ -2,7 +2,7 @@ package com.huang.thrift.autoconfigure;
 
 
 import com.huang.thrift.config.NacosConfigProperties;
-import com.huang.thrift.config.ThrifitServiceConfig;
+import com.huang.thrift.config.ThriftServiceConfig;
 import com.huang.thrift.support.ThriftClientInjector;
 import com.huang.thrift.support.ThriftServerBootstrap;
 import com.huang.thrift.support.ThriftServiceProcessor;
@@ -14,19 +14,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
 
+
 @AutoConfiguration
-@EnableConfigurationProperties({ThrifitServiceConfig.class})
+@EnableConfigurationProperties({ThriftServiceConfig.class})
 @Import({ThriftServiceProcessor.class, ThriftClientInjector.class})
 public class ThriftAutoConfiguration {
     @Bean
     @ConditionalOnBean(ThriftServiceProcessor.class)
-    public ThriftServerBootstrap thriftServerBootstrap(ThrifitServiceConfig thrifitServiceConfig,
+    public ThriftServerBootstrap thriftServerBootstrap(ThriftServiceConfig thriftServiceConfig,
                                                        @Autowired(required = false) NacosConfigProperties nacosConfigProperties) {
         ThriftServerBootstrap serverBootstrap = new ThriftServerBootstrap();
         serverBootstrap.setNacosConfig(nacosConfigProperties);
-        serverBootstrap.setConfig(thrifitServiceConfig);
+        serverBootstrap.setConfig(thriftServiceConfig);
         return serverBootstrap;
     }
-
-
 }

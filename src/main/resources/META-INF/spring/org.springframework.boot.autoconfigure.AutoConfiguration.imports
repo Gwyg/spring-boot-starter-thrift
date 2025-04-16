@@ -1,2 +1,3 @@
-com.huang.thrift.test.User
 com.huang.thrift.autoconfigure.ThriftAutoConfiguration
+com.huang.thrift.autoconfigure.ClientAutoConfig
+com.huang.thrift.autoconfigure.NacosAutoConfiguration

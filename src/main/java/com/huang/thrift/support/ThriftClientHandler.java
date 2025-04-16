@@ -17,20 +17,27 @@ public class ThriftClientHandler implements InvocationHandler {
     private final GenericObjectPool<TTransport> connectionPool;
     private final Class<?> clientClass;
     private final String serviceName;
+    private final String nacosName;
 
-    public ThriftClientHandler(LoadBalancer loadBalancer, GenericObjectPool<TTransport> connectionPool, Class<?> clientClass, String serviceName) {
+    public ThriftClientHandler(LoadBalancer loadBalancer,
+                               GenericObjectPool<TTransport> connectionPool,
+                               Class<?> clientClass,
+                               String serviceName,
+                               String nacosName) {
         this.loadBalancer = loadBalancer;
         this.connectionPool = connectionPool;
         this.clientClass = clientClass;
         this.serviceName = serviceName;
+        this.nacosName = nacosName;
     }
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         TTransport socket = null;
+        // 直接创建连接 TODO 考虑优化为使用连接池
         try {
             if(loadBalancer != null){
-                // 使用 Nacos 获取服务实例 TODO serviceName 需要更换，这个是服务端中
-                Instance instance = loadBalancer.choose("thrift-service");
+                // 使用 Nacos 获取服务实例
+                Instance instance = loadBalancer.choose(nacosName);
                 String host = instance.getIp();
                 int port = instance.getPort();
                 socket = new TFramedTransport(new TSocket(host, port));

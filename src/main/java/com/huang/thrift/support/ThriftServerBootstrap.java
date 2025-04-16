@@ -1,10 +1,10 @@
 package com.huang.thrift.support;
 
 import com.alibaba.nacos.api.NacosFactory;
-import com.alibaba.nacos.api.naming.NamingFactory;
 import com.alibaba.nacos.api.naming.NamingService;
+import com.alibaba.nacos.api.naming.pojo.Instance;
 import com.huang.thrift.config.NacosConfigProperties;
-import com.huang.thrift.config.ThrifitServiceConfig;
+import com.huang.thrift.config.ThriftServiceConfig;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TNonblockingServer;
@@ -17,7 +17,7 @@ import java.net.InetAddress;
 
 public class ThriftServerBootstrap implements SmartLifecycle {
     // 服务端配置
-    private ThrifitServiceConfig config;
+    private ThriftServiceConfig config;
     // nacos 配置
     private NacosConfigProperties nacosConfig;
 
@@ -49,22 +49,32 @@ public class ThriftServerBootstrap implements SmartLifecycle {
                 throw new RuntimeException("Thrift 服务器启动失败", e);
             }
             // 如果启用 Nacos，注册服务
-            if (nacosConfig == null && nacosConfig.isEnabled()){
+            if (nacosConfig != null && nacosConfig.isEnabled()){
                 try {
-                    // 初始化 Nacos 客户端
-                    NamingService namingService = nacosConfig.getNamingService();
                     // 注册服务
-                    namingService.registerInstance(
-                            nacosConfig.getServiceName(),
-                            InetAddress.getLocalHost().getHostAddress(),
-                            config.getPort()
-                    );
-                    // TODO心跳检测
+                    registerToNacos();
+                    // 心跳检测
                 } catch (Exception e) {
                     throw new RuntimeException("Nacos 注册失败！",e);
                 }
             }
         }
+    }
+    // 注册服务到 Nacos
+    private void registerToNacos() throws Exception{
+        NamingService namingService = nacosConfig.getNamingService();
+        Instance instance = new Instance();
+        instance.setIp(InetAddress.getLocalHost().getHostAddress());
+        instance.setPort(config.getPort());
+        // 设置状态为健康
+        instance.setHealthy(true);
+        // 临时实例，依赖心跳保持
+        instance.setEphemeral(true);
+        // 注册服务
+        namingService.registerInstance(
+                nacosConfig.getServiceName(),
+                instance
+        );
     }
 
     @Override
@@ -100,11 +110,11 @@ public class ThriftServerBootstrap implements SmartLifecycle {
         return Integer.MAX_VALUE;
     }
 
-    public ThrifitServiceConfig getConfig() {
+    public ThriftServiceConfig getConfig() {
         return config;
     }
 
-    public void setConfig(ThrifitServiceConfig config) {
+    public void setConfig(ThriftServiceConfig config) {
         this.config = config;
     }
 

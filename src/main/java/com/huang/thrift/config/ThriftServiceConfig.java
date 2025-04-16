@@ -3,7 +3,7 @@ package com.huang.thrift.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "spring.thrift.service")
-public class ThrifitServiceConfig {
+public class ThriftServiceConfig {
     // 服务端口
     private int port = 9000;
     // 是否开启服务

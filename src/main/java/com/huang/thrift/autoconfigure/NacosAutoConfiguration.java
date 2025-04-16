@@ -4,7 +4,6 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.naming.NamingFactory;
 import com.huang.thrift.config.NacosConfigProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,7 +16,7 @@ public class NacosAutoConfiguration {
         try {
             nacos.setNamingService(NamingFactory.createNamingService(nacos.getNacosAddr()));
         } catch (NacosException e) {
-            throw new RuntimeException("创建 nacos 客户端失败",e);
+            System.out.println("Nacos 初始化失败！");
         }
         return nacos;
     }

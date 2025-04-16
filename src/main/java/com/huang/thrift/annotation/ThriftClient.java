@@ -12,14 +12,12 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface ThriftClient {
-    /**
-     * Thrift 服务端的主机地址，默认为 localhost。
-     */
+
     @AliasFor("serviceName")
     String value() default "";
     @AliasFor("value")
     String serviceName() default ""; // 服务名称
-    // 服务地址
+    // 服务地址 默认 localhost
     String host() default "";
     /**
      * Thrift 服务端的端口号，默认为 9000。
@@ -28,5 +26,6 @@ public @interface ThriftClient {
     // 注册在 nacos 的服务名
     String nacosName() default "thrift-service";
 
-
+    // 降级类（需实现同一接口）
+    Class<?> fallbackClass() default void.class;
 }
