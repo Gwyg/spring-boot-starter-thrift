@@ -21,15 +21,15 @@ public class ThriftConnectionFactory extends BasePooledObjectFactory<TTransport>
 
     @Override
     public TTransport create() throws TTransportException {
-        TTransport socket = new TSocket(host, port, timeout);
-        socket = new TFramedTransport(socket);
-        socket.open();
-        return socket;
+        TSocket socket = new TSocket(host, port, timeout);
+        TTransport transport = new TFramedTransport(socket);
+        transport.open();
+        return transport;
     }
 
     @Override
-    public PooledObject<TTransport> wrap(TTransport socket) {
-        return new DefaultPooledObject<>(socket);
+    public PooledObject<TTransport> wrap(TTransport transport) {
+        return new DefaultPooledObject<>(transport);
     }
 
     @Override
@@ -43,9 +43,17 @@ public class ThriftConnectionFactory extends BasePooledObjectFactory<TTransport>
 
     @Override
     public void destroyObject(PooledObject<TTransport> p) {
-        TTransport socket = p.getObject();
-        if (socket.isOpen()){
-            socket.close();
+        if (p == null) {
+            return;
+        }
+        TTransport transport = p.getObject();
+        if (transport != null) {
+            try {
+                if (transport.isOpen()) {
+                    transport.close();
+                }
+            } catch (Exception ignored) {
+            }
         }
     }
 

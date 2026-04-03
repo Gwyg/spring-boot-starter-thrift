@@ -7,6 +7,5 @@ import java.util.List;
 
 public interface LoadBalancer {
     Instance choose(String serviceName);
-    void updateInstances(String serviceName, List<Instance> instances);
-    boolean hasInstances(String serviceName);
+
 }

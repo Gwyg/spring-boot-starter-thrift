@@ -33,7 +33,6 @@ public class ThriftClientHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         TTransport socket = null;
-        // 直接创建连接 TODO 考虑优化为使用连接池
         try {
             if(loadBalancer != null){
                 // 使用 Nacos 获取服务实例
@@ -46,8 +45,6 @@ public class ThriftClientHandler implements InvocationHandler {
                 // 借用连接
                 socket = connectionPool.borrowObject();
             }
-//            socket = new TFramedTransport(new TSocket("localhost", 9000));
-//            socket.open();
             TBinaryProtocol protocol = new TBinaryProtocol(socket);
             // 使用 TMultiplexedProtocol
             TMultiplexedProtocol multiplexedProtocol = new TMultiplexedProtocol(protocol, serviceName);
@@ -55,7 +52,7 @@ public class ThriftClientHandler implements InvocationHandler {
             String name = clientClass.getEnclosingClass().getName() + "$Client";
             Class<?> client = Class.forName(name,true,clientClass.getClassLoader());
             Object thriftClient = client.getDeclaredConstructor(TProtocol.class).newInstance(multiplexedProtocol);
-            return method.invoke(clientClass.cast(thriftClient), args);
+            return method.invoke(thriftClient, args);
         }finally {
             if(socket != null){
                 if(loadBalancer != null){

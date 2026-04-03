@@ -18,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @ConditionalOnProperty(name = "spring.thrift.service.enabled", havingValue = "true")
 public class ThriftServiceProcessor implements BeanPostProcessor {
 
-    private ApplicationContext applicationContext;
     private final Map<String, Class<?>> serviceInterfaceMap = new ConcurrentHashMap<>();
     public static TMultiplexedProcessor processor = new TMultiplexedProcessor();
 
